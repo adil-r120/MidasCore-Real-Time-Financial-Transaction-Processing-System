@@ -70,7 +70,7 @@ flowchart TD
     end
 
     subgraph Persistence ["Relational Data Store (H2 / RDBMS)"]
-        UR[("UserRecord Table (@Version Locked)")]
+        UR[("UserRecord Table (Version Locked)")]
         TR[("TransactionRecord Table")]
     end
 
@@ -92,7 +92,7 @@ flowchart TD
     IC -->|Incentive Result| TS
     VAL -.->|Insufficient Funds / Unknown Account| REJ[Log & Discard Transaction]
 
-    TS -->|@Transactional: Settle Ledger| DC
+    TS -->|Transactional Settle Ledger| DC
     DC -->|Persist Updated Balances| UR
     DC -->|Write Immutable Audit Record| TR
 
@@ -285,7 +285,7 @@ sequenceDiagram
         end
 
         rect rgb(240, 248, 255)
-            note over Service,DB: @Transactional Boundary (Atomic Settlement & Version Check)
+            note over Service,DB: Transactional Boundary (Atomic Settlement & Version Check)
             Service->>Service: settleTransaction(senderId, recipientId, amount, incentive)
             Service->>Conduit: save(sender) & save(recipient)
             Conduit->>DB: UPDATE UserRecord SET balance=?, version=?
