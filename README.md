@@ -49,7 +49,7 @@ Additionally, MidasCore exposes low-latency REST endpoints for external systems 
 ```mermaid
 flowchart TD
     subgraph Event_Producer ["Upstream Payment Producers"]
-        TP[Trader / Payment Ingestion Gateway]
+        TP["Trader / Payment Ingestion Gateway"]
     end
 
     subgraph Messaging ["Message Streaming Layer"]
@@ -57,12 +57,13 @@ flowchart TD
     end
 
     subgraph MidasCore_App ["MidasCore Backend Service (Port 33400)"]
-        TL["TransactionListener (@KafkaListener)"]
-        TS["TransactionService (@Service, @Transactional)"]
+        TL["TransactionListener (Kafka Consumer)"]
+        TS["TransactionService (Atomic Ledger Engine)"]
         IC["IncentiveClient (HTTP Client w/ Timeouts)"]
         VAL{"Validation & Solvency Engine"}
         DC["DatabaseConduit (Persistence Layer)"]
-        BC["BalanceController (@RestController)"]
+        BC["BalanceController (REST API)"]
+        REJ["Discarded Transaction"]
     end
 
     subgraph External_Services ["Downstream Microservices"]
@@ -75,7 +76,7 @@ flowchart TD
     end
 
     subgraph Consumers ["Client & Query Inquiries"]
-        Client[Client App / Web Dashboard]
+        Client["Client App / Web Dashboard"]
     end
 
     %% Flow connections
@@ -90,13 +91,13 @@ flowchart TD
     IC -->|POST /incentive w/ Timeouts| IS
     IS -->|Returns Reward Amount / Fallback| IC
     IC -->|Incentive Result| TS
-    VAL -.->|Insufficient Funds / Unknown Account| REJ[Log & Discard Transaction]
+    VAL -.->|Insufficient Funds / Unknown Account| REJ
 
     TS -->|Transactional Settle Ledger| DC
     DC -->|Persist Updated Balances| UR
     DC -->|Write Immutable Audit Record| TR
 
-    Client -->|GET /balance?userId={id}| BC
+    Client -->|GET /balance?userId=id| BC
     BC -->|Query Balance| DC
 ```
 
