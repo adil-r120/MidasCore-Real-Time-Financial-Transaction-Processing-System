@@ -17,6 +17,7 @@ An enterprise-grade, event-driven financial transaction processing engine built 
 
 - [Overview](#overview)
 - [System Architecture](#system-architecture)
+- [Live Interactive Financial Dashboard](#live-interactive-financial-dashboard)
 - [Key Features](#key-features)
 - [Technology Stack](#technology-stack)
 - [Data Model & Schema Design](#data-model--schema-design)
@@ -29,6 +30,8 @@ An enterprise-grade, event-driven financial transaction processing engine built 
   - [2. Start the External Incentive Service](#2-start-the-external-incentive-service)
   - [3. Build the Application](#3-build-the-application)
   - [4. Run the Application](#4-run-the-application)
+  - [5. Run with Docker Compose (Full Stack)](#alternative-run-with-docker-compose-full-stack)
+- [CI/CD Automation Pipeline](#cicd-automation-pipeline)
 - [Integration Testing & Verification](#integration-testing--verification)
 - [Engineering Design Decisions & Resiliency](#engineering-design-decisions--resiliency)
 - [Future Enhancements](#future-enhancements)
@@ -263,6 +266,35 @@ MidasCore orchestrates outbound communication with the downstream Incentive Serv
 
 ---
 
+### 3. Ledger & Dashboard REST Endpoints
+
+MidasCore exposes additional REST endpoints under `/api` powering the interactive web dashboard and programmatic ledger integrations:
+
+| Endpoint | Method | Description | Sample Request / Response |
+| :--- | :--- | :--- | :--- |
+| **`/api/users`** | `GET` | Returns all registered account holders, balances, and optimistic lock versions. | Returns `[{"id": 1, "name": "bernie", "balance": 1200.23, "version": 0}, ...]` |
+| **`/api/transactions/history`** | `GET` | Returns all settled transaction audit records, ordered newest first. | Returns `[{"id": 1, "sender": {...}, "recipient": {...}, "amount": 100.0, "incentive": 10.0}]` |
+| **`/api/transactions`** | `POST` | Dispatches a financial settlement with atomic balance mutation. | Body: `{"senderId": 1, "recipientId": 2, "amount": 50.0}`<br>Returns updated balances. |
+| **`/api/users/seed`** | `POST` | Pre-populates the 11 standard test accounts into the H2 database. | Returns `{"seeded": true, "message": "Seeded 11 standard ledger accounts."}` |
+
+#### Example: Execute Settlement via REST
+```bash
+curl -X POST "http://localhost:33400/api/transactions" \
+     -H "Content-Type: application/json" \
+     -d '{"senderId": 1, "recipientId": 2, "amount": 150.00}'
+```
+
+```json
+{
+  "success": true,
+  "message": "Transaction settled successfully.",
+  "senderNewBalance": 1050.23,
+  "recipientNewBalance": 2365.37
+}
+```
+
+---
+
 ## Transaction Lifecycle
 
 ```mermaid
@@ -317,9 +349,12 @@ sequenceDiagram
 
 ```text
 MidasCore/
-├── .mvn/                                # Maven wrapper configuration
+├── .github/
+│   └── workflows/
+│       └── ci.yml                             # Automated GitHub Actions CI workflow
+├── .mvn/                                      # Maven wrapper configuration
 ├── services/
-│   └── transaction-incentive-api.jar    # Standalone mock incentive microservice
+│   └── transaction-incentive-api.jar          # Standalone mock incentive microservice
 ├── src/
 │   ├── main/
 │   │   ├── java/com/jpmc/midascore/
@@ -330,7 +365,8 @@ MidasCore/
 │   │   │   ├── config/
 │   │   │   │   └── RestTemplateConfig.java    # HTTP client configuration with timeouts
 │   │   │   ├── controller/
-│   │   │   │   └── BalanceController.java     # REST endpoint exposing /balance
+│   │   │   │   ├── BalanceController.java     # REST endpoint exposing /balance
+│   │   │   │   └── DashboardApiController.java# REST APIs powering the web dashboard
 │   │   │   ├── entity/
 │   │   │   │   ├── TransactionRecord.java     # Relational transaction history entity
 │   │   │   │   └── UserRecord.java            # Relational user account entity (@Version)
@@ -345,6 +381,8 @@ MidasCore/
 │   │   │   │   └── TransactionService.java    # Atomic @Transactional ledger settlement
 │   │   │   └── MidasCoreApplication.java      # Spring Boot application entry point
 │   │   └── resources/
+│   │       ├── static/
+│   │       │   └── index.html                 # Embedded FinTech single-page dashboard
 │   │       └── application.yml                # Spring, Kafka, H2, & service config
 │   └── test/
 │       ├── java/com/jpmc/midascore/
@@ -359,6 +397,8 @@ MidasCore/
 │       │   └── UserPopulator.java             # Test database account seeder
 │       └── resources/
 │           └── test_data/                     # Integration test transaction datasets
+├── Dockerfile                                 # Multi-stage container build definition
+├── docker-compose.yml                         # Kafka + Incentive + App container stack
 ├── application.yml                            # Root application configuration
 ├── mvnw                                       # Unix Maven wrapper executable
 ├── mvnw.cmd                                   # Windows Maven wrapper executable
@@ -469,6 +509,15 @@ docker compose up --build
 - **MidasCore Financial Dashboard**: `http://localhost:33400/`
 - **Incentive Microservice**: `http://localhost:8080/incentive`
 - **Apache Kafka Broker**: `localhost:9092`
+
+---
+
+## CI/CD Automation Pipeline
+
+The repository integrates an automated continuous integration pipeline powered by GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
+- **Build Environment**: Ubuntu runner with Eclipse Temurin OpenJDK 17 LTS.
+- **Dependency Caching**: Automated caching of Maven packages (`~/.m2/repository`) for rapid pipeline execution.
+- **Regression Guard**: Compiles and verifies the application on every commit pushed to `main` and all Pull Requests.
 
 ---
 
