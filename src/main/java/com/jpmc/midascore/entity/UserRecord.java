@@ -15,6 +15,9 @@ public class UserRecord {
     @Column(nullable = false)
     private float balance;
 
+    @Version
+    private Long version;
+
     protected UserRecord() {
     }
 
@@ -42,5 +45,9 @@ public class UserRecord {
 
     public void setBalance(float balance) {
         this.balance = balance;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 }

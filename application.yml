@@ -29,3 +29,9 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+services:
+  incentive-api:
+    url: ${INCENTIVE_API_URL:http://localhost:8080/incentive}
+    connect-timeout-ms: 5000
+    read-timeout-ms: 5000

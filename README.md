@@ -58,6 +58,8 @@ flowchart TD
 
     subgraph MidasCore_App ["MidasCore Backend Service (Port 33400)"]
         TL["TransactionListener (@KafkaListener)"]
+        TS["TransactionService (@Service, @Transactional)"]
+        IC["IncentiveClient (HTTP Client w/ Timeouts)"]
         VAL{"Validation & Solvency Engine"}
         DC["DatabaseConduit (Persistence Layer)"]
         BC["BalanceController (@RestController)"]
@@ -68,7 +70,7 @@ flowchart TD
     end
 
     subgraph Persistence ["Relational Data Store (H2 / RDBMS)"]
-        UR[("UserRecord Table")]
+        UR[("UserRecord Table (@Version Locked)")]
         TR[("TransactionRecord Table")]
     end
 
@@ -79,15 +81,18 @@ flowchart TD
     %% Flow connections
     TP -->|Publishes Transaction JSON| KT
     KT -->|Stream Consumption| TL
-    TL -->|Parses & Validates Entities| VAL
+    TL -->|Delegates to Service| TS
+    TS -->|Pre-validation| VAL
     VAL -->|Lookup Sender & Recipient| DC
     DC <-->|Fetch Accounts| UR
 
-    VAL -->|Valid & Solvent| IS
-    IS -->|Returns Reward Amount / Fallback| TL
+    VAL -->|Valid & Solvent| IC
+    IC -->|POST /incentive w/ Timeouts| IS
+    IS -->|Returns Reward Amount / Fallback| IC
+    IC -->|Incentive Result| TS
     VAL -.->|Insufficient Funds / Unknown Account| REJ[Log & Discard Transaction]
 
-    TL -->|Debit Sender, Credit Recipient + Incentive| DC
+    TS -->|@Transactional: Settle Ledger| DC
     DC -->|Persist Updated Balances| UR
     DC -->|Write Immutable Audit Record| TR
 
@@ -251,35 +256,43 @@ sequenceDiagram
     actor Trader as Upstream Trader / System
     participant Kafka as Apache Kafka (trader-updates)
     participant Listener as TransactionListener
-    participant Conduit as DatabaseConduit
+    participant Service as TransactionService
+    participant Client as IncentiveClient
     participant IncentiveAPI as Incentive Microservice (:8080)
+    participant Conduit as DatabaseConduit
     participant DB as Relational Database (H2)
 
     Trader->>Kafka: Publish Transaction(senderId, recipientId, amount)
     Kafka->>Listener: Consume Transaction message
-    Listener->>Conduit: findById(senderId) & findById(recipientId)
+    Listener->>Service: process(transaction)
+    Service->>Conduit: findById(senderId) & findById(recipientId)
     Conduit->>DB: Query UserRecord records
     DB-->>Conduit: Return Sender & Recipient entities
 
     alt Sender or Recipient Missing OR Sender Balance < Amount
-        Listener->>Listener: Log warning & discard transaction (No state changes)
+        Service->>Service: Log warning & discard transaction (No state changes)
     else Account Valid & Sender Balance >= Amount
-        opt External Incentive Evaluation
-            Listener->>IncentiveAPI: POST /incentive with Transaction
+        opt External Incentive Evaluation (Outside DB Transaction)
+            Service->>Client: fetchIncentive(transaction)
+            Client->>IncentiveAPI: POST /incentive (w/ connection & read timeouts)
             alt Incentive API Responds
-                IncentiveAPI-->>Listener: Incentive(amount: float)
-            else Incentive API Unavailable / Error
-                Listener->>Listener: Catch exception & fallback incentive = 0.0
+                IncentiveAPI-->>Client: Incentive(amount: float)
+                Client-->>Service: return incentive amount
+            else Incentive API Unavailable / Timeout / Error
+                Client->>Client: Catch exception & return fallback 0.0
+                Client-->>Service: return 0.0
             end
         end
 
-        Listener->>Listener: sender.balance = sender.balance - amount
-        Listener->>Listener: recipient.balance = recipient.balance + amount + incentive
-        Listener->>Conduit: save(sender) & save(recipient)
-        Conduit->>DB: UPDATE UserRecord balances
-        Listener->>Conduit: save(TransactionRecord)
-        Conduit->>DB: INSERT into TransactionRecord
-        Listener->>Listener: Log success with updated balances
+        rect rgb(240, 248, 255)
+            note over Service,DB: @Transactional Boundary (Atomic Settlement & Version Check)
+            Service->>Service: settleTransaction(senderId, recipientId, amount, incentive)
+            Service->>Conduit: save(sender) & save(recipient)
+            Conduit->>DB: UPDATE UserRecord SET balance=?, version=?
+            Service->>Conduit: save(TransactionRecord)
+            Conduit->>DB: INSERT into TransactionRecord
+        end
+        Service->>Service: Log settlement success with updated balances
     end
 ```
 
@@ -297,12 +310,15 @@ MidasCore/
 │   │   ├── java/com/jpmc/midascore/
 │   │   │   ├── component/
 │   │   │   │   ├── DatabaseConduit.java       # Encapsulated data-access conduit
-│   │   │   │   └── TransactionListener.java   # Kafka consumer & transaction processor
+│   │   │   │   ├── IncentiveClient.java       # Outbound HTTP client for incentive API
+│   │   │   │   └── TransactionListener.java   # Kafka event consumer & listener
+│   │   │   ├── config/
+│   │   │   │   └── RestTemplateConfig.java    # HTTP client configuration with timeouts
 │   │   │   ├── controller/
 │   │   │   │   └── BalanceController.java     # REST endpoint exposing /balance
 │   │   │   ├── entity/
 │   │   │   │   ├── TransactionRecord.java     # Relational transaction history entity
-│   │   │   │   └── UserRecord.java            # Relational user account entity
+│   │   │   │   └── UserRecord.java            # Relational user account entity (@Version)
 │   │   │   ├── foundation/
 │   │   │   │   ├── Balance.java               # Balance response DTO
 │   │   │   │   ├── Incentive.java             # Incentive microservice DTO
@@ -310,9 +326,11 @@ MidasCore/
 │   │   │   ├── repository/
 │   │   │   │   ├── TransactionRepository.java # JPA repository for transactions
 │   │   │   │   └── UserRepository.java        # JPA repository for user accounts
+│   │   │   ├── service/
+│   │   │   │   └── TransactionService.java    # Atomic @Transactional ledger settlement
 │   │   │   └── MidasCoreApplication.java      # Spring Boot application entry point
 │   │   └── resources/
-│   │       └── application.yml                # Spring, Kafka, and H2 configuration
+│   │       └── application.yml                # Spring, Kafka, H2, & service config
 │   └── test/
 │       ├── java/com/jpmc/midascore/
 │       │   ├── BalanceQuerier.java            # Test client for balance REST API
