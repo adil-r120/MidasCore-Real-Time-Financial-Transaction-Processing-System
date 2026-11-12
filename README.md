@@ -11,14 +11,6 @@
 
 An event-driven financial transaction processing backend built with **Java 17**, **Spring Boot**, and **Apache Kafka**. The system consumes financial transaction events asynchronously, executes account solvency and existence validations, coordinates promotional reward calculations with a downstream incentive microservice, updates user account balances, and records transaction history in a relational database.
 
----
-
-## Program Attribution & Context
-
-This project is developed as part of the **JPMorgan Chase & Co. Software Engineering Virtual Experience Program** hosted on Forage (`com.jpmc.midascore`).
-
-- **Foundational Architecture & Specifications**: The initial system requirements, domain model interfaces (`Transaction`, `UserRecord`), sample transaction test data, and the standalone mock incentive microservice (`services/transaction-incentive-api.jar`) were provided by JPMorgan Chase & Co. as part of the engineering program.
-- **Engineering Implementation & Enhancements**: The Kafka consumer integration (`TransactionListener`), business validation and solvency checks, outbound HTTP client with timeout handling (`IncentiveClient`), balance settlement logic (`TransactionService`), database access layer (`DatabaseConduit`), REST balance inquiry endpoint (`BalanceController`), interactive dashboard UI and REST APIs (`DashboardApiController`, `index.html`), containerization (`Dockerfile`, `docker-compose.yml`), and automated CI pipeline (`.github/workflows/ci.yml`) were engineered to fulfill and extend the program's technical milestones.
 
 ---
 
