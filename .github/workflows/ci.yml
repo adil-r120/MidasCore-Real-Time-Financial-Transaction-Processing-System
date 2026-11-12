@@ -30,3 +30,4 @@ jobs:
 
       - name: Verify Build Artifact
         run: ls -lh target/midas-core-1.0.0.jar
+

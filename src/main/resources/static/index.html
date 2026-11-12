@@ -26,18 +26,9 @@
         </div>
         <div>
           <span class="text-lg font-bold tracking-tight text-white">MidasCore</span>
-          <span class="text-xs ml-2 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">Core Ledger Engine</span>
         </div>
       </div>
       <div class="flex items-center space-x-4">
-        <div class="hidden md:flex items-center space-x-2 text-xs text-slate-400 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-700/50">
-          <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>Port 33400</span>
-          <span>•</span>
-          <span>Kafka Consumer</span>
-          <span>•</span>
-          <span>H2 Relational Store</span>
-        </div>
         <button id="seedBtn" onclick="seedDatabase()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg border border-slate-700 transition font-medium flex items-center space-x-1.5">
           <span>⚡ Initialize Demo Accounts</span>
         </button>
@@ -68,7 +59,7 @@
       <div class="bg-slate-900/70 border border-slate-800/80 rounded-xl p-5 shadow-sm">
         <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Incentive Service</p>
         <p class="text-2xl font-bold text-indigo-400 mt-1">Active</p>
-        <p class="text-xs text-slate-500 mt-1">Port 8080 with auto-fallback</p>
+        <p class="text-xs text-slate-500 mt-1">Automated Reward Calculations</p>
       </div>
     </div>
 
@@ -83,8 +74,6 @@
               <h2 class="text-base font-semibold text-white">Account Balance Inquiry</h2>
               <p class="text-xs text-slate-400 mt-0.5">Queries GET /balance?userId={id}</p>
             </div>
-            <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">REST API</span>
-          </div>
 
           <form onsubmit="queryBalance(event)" class="mt-5 space-y-4">
             <div>
@@ -121,7 +110,7 @@
             <h2 class="text-base font-semibold text-white">Execute Financial Settlement</h2>
             <p class="text-xs text-slate-400 mt-0.5">Dispatches transaction with atomic verification, solvency check, & incentive reward</p>
           </div>
-          <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">@Transactional</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">Transactional</span>
         </div>
 
         <form id="txForm" onsubmit="submitTransaction(event)" class="mt-5 space-y-4">
@@ -218,7 +207,6 @@
   <footer class="border-t border-slate-800 bg-slate-950 py-6 text-center text-xs text-slate-500">
     <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between">
       <span>MidasCore – Real-Time Financial Transaction Processing System</span>
-      <span class="mt-2 sm:mt-0 font-mono">Spring Boot 3.2.5 • Apache Kafka • H2 Persistence</span>
     </div>
   </footer>
 
@@ -392,3 +380,4 @@
   </script>
 </body>
 </html>
+
