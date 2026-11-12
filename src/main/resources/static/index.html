@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MidasCore – Real-Time Financial Transaction Processing Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-slate-950">
+
+  <!-- Top Navigation -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="h-9 w-9 rounded-lg bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center font-bold text-slate-950 text-lg shadow-lg shadow-emerald-500/20">
+          M
+        </div>
+        <div>
+          <span class="text-lg font-bold tracking-tight text-white">MidasCore</span>
+          <span class="text-xs ml-2 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">Core Ledger Engine</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="hidden md:flex items-center space-x-2 text-xs text-slate-400 bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-700/50">
+          <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Port 33400</span>
+          <span>•</span>
+          <span>Kafka Consumer</span>
+          <span>•</span>
+          <span>H2 Relational Store</span>
+        </div>
+        <button id="seedBtn" onclick="seedDatabase()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-lg border border-slate-700 transition font-medium flex items-center space-x-1.5">
+          <span>⚡ Initialize Demo Accounts</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8">
+
+    <!-- KPI Summary Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-slate-900/70 border border-slate-800/80 rounded-xl p-5 shadow-sm">
+        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Accounts</p>
+        <p id="kpiAccounts" class="text-2xl font-bold text-white mt-1 mono">--</p>
+        <p class="text-xs text-slate-500 mt-1">Registered in UserRecord</p>
+      </div>
+      <div class="bg-slate-900/70 border border-slate-800/80 rounded-xl p-5 shadow-sm">
+        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Ledger Balance</p>
+        <p id="kpiTotalCapital" class="text-2xl font-bold text-emerald-400 mt-1 mono">$0.00</p>
+        <p class="text-xs text-slate-500 mt-1">Aggregated account capital</p>
+      </div>
+      <div class="bg-slate-900/70 border border-slate-800/80 rounded-xl p-5 shadow-sm">
+        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Settled Transactions</p>
+        <p id="kpiTransactions" class="text-2xl font-bold text-cyan-400 mt-1 mono">--</p>
+        <p class="text-xs text-slate-500 mt-1">Persisted in TransactionRecord</p>
+      </div>
+      <div class="bg-slate-900/70 border border-slate-800/80 rounded-xl p-5 shadow-sm">
+        <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Incentive Service</p>
+        <p class="text-2xl font-bold text-indigo-400 mt-1">Active</p>
+        <p class="text-xs text-slate-500 mt-1">Port 8080 with auto-fallback</p>
+      </div>
+    </div>
+
+    <!-- Interactive Grid: Balance Query & Transaction Dispatcher -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+      <!-- Left Column: Fast Balance Query (4 cols) -->
+      <section class="lg:col-span-4 bg-slate-900/70 border border-slate-800/80 rounded-xl p-6 flex flex-col justify-between shadow-sm">
+        <div>
+          <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+            <div>
+              <h2 class="text-base font-semibold text-white">Account Balance Inquiry</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Queries GET /balance?userId={id}</p>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">REST API</span>
+          </div>
+
+          <form onsubmit="queryBalance(event)" class="mt-5 space-y-4">
+            <div>
+              <label for="balanceUserId" class="block text-xs font-medium text-slate-300 mb-1">Select User Account</label>
+              <select id="balanceUserSelect" onchange="document.getElementById('balanceUserId').value = this.value" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 mb-2">
+                <option value="">-- Choose registered account --</option>
+              </select>
+              <div class="flex items-center space-x-2">
+                <input id="balanceUserId" type="number" min="0" placeholder="Or enter User ID (e.g. 1)" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 mono">
+                <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm transition shadow-md shadow-emerald-500/10">Query</button>
+              </div>
+            </div>
+          </form>
+
+          <!-- Balance Result Display -->
+          <div id="balanceResultBox" class="mt-6 p-4 rounded-xl bg-slate-950 border border-slate-800">
+            <span class="text-xs text-slate-400 block font-medium">Real-Time Cleared Balance</span>
+            <div class="flex items-baseline justify-between mt-2">
+              <span id="balanceDisplay" class="text-3xl font-extrabold text-emerald-400 mono">$0.00</span>
+              <span id="balanceUserTag" class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 mono">User #--</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-slate-800/80 text-xs text-slate-500">
+          Direct endpoint: <code class="mono text-slate-400">GET /balance?userId=1</code>
+        </div>
+      </section>
+
+      <!-- Right Column: Transaction Simulator / Settlement (8 cols) -->
+      <section class="lg:col-span-8 bg-slate-900/70 border border-slate-800/80 rounded-xl p-6 shadow-sm">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+          <div>
+            <h2 class="text-base font-semibold text-white">Execute Financial Settlement</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Dispatches transaction with atomic verification, solvency check, & incentive reward</p>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">@Transactional</span>
+        </div>
+
+        <form id="txForm" onsubmit="submitTransaction(event)" class="mt-5 space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label for="txSender" class="block text-xs font-medium text-slate-300 mb-1">Sender Account</label>
+              <select id="txSender" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                <option value="">-- Choose sender --</option>
+              </select>
+            </div>
+            <div>
+              <label for="txRecipient" class="block text-xs font-medium text-slate-300 mb-1">Recipient Account</label>
+              <select id="txRecipient" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                <option value="">-- Choose recipient --</option>
+              </select>
+            </div>
+            <div>
+              <label for="txAmount" class="block text-xs font-medium text-slate-300 mb-1">Transfer Principal ($)</label>
+              <input id="txAmount" type="number" step="0.01" min="0.01" placeholder="e.g. 150.00" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 mono">
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-2">
+            <span class="text-xs text-slate-500">Atomic debit & credit + audit logging</span>
+            <button type="submit" id="submitTxBtn" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold px-5 py-2.5 rounded-lg text-sm transition shadow-lg shadow-emerald-500/10 flex items-center space-x-2">
+              <span>Execute Settlement</span>
+              <span>→</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Status Toast Banner -->
+        <div id="txToast" class="hidden mt-5 p-4 rounded-xl border text-sm transition-all duration-300">
+          <p id="txToastMsg" class="font-medium"></p>
+        </div>
+      </section>
+    </div>
+
+    <!-- Bottom Tables: Accounts & Recent Transactions -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+      <!-- Ledger Accounts Table (5 cols) -->
+      <section class="lg:col-span-5 bg-slate-900/70 border border-slate-800/80 rounded-xl p-6 shadow-sm flex flex-col">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <h3 class="text-sm font-semibold text-white uppercase tracking-wider">Account Ledger</h3>
+          <button onclick="loadUsers()" class="text-xs text-slate-400 hover:text-white transition">↻ Refresh</button>
+        </div>
+        <div class="overflow-x-auto flex-1 mt-3">
+          <table class="w-full text-left text-xs">
+            <thead class="text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="py-2 font-medium">ID</th>
+                <th class="py-2 font-medium">Account Name</th>
+                <th class="py-2 font-medium text-right">Cleared Balance</th>
+                <th class="py-2 font-medium text-right">Version</th>
+              </tr>
+            </thead>
+            <tbody id="accountsTableBody" class="divide-y divide-slate-800/60 font-medium">
+              <tr><td colspan="4" class="py-4 text-center text-slate-500">Loading accounts...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Historical Audit Stream Table (7 cols) -->
+      <section class="lg:col-span-7 bg-slate-900/70 border border-slate-800/80 rounded-xl p-6 shadow-sm flex flex-col">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <h3 class="text-sm font-semibold text-white uppercase tracking-wider">Historical Audit Records</h3>
+          <button onclick="loadHistory()" class="text-xs text-slate-400 hover:text-white transition">↻ Refresh</button>
+        </div>
+        <div class="overflow-x-auto flex-1 mt-3">
+          <table class="w-full text-left text-xs">
+            <thead class="text-slate-400 border-b border-slate-800">
+              <tr>
+                <th class="py-2 font-medium">Tx ID</th>
+                <th class="py-2 font-medium">Sender</th>
+                <th class="py-2 font-medium">Recipient</th>
+                <th class="py-2 font-medium text-right">Principal</th>
+                <th class="py-2 font-medium text-right">Incentive</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody" class="divide-y divide-slate-800/60 font-medium">
+              <tr><td colspan="5" class="py-4 text-center text-slate-500">No transactions recorded yet</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 bg-slate-950 py-6 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between">
+      <span>MidasCore – Real-Time Financial Transaction Processing System</span>
+      <span class="mt-2 sm:mt-0 font-mono">Spring Boot 3.2.5 • Apache Kafka • H2 Persistence</span>
+    </div>
+  </footer>
+
+  <!-- Dashboard JavaScript Logic -->
+  <script>
+    let usersCache = [];
+
+    async function loadDashboard() {
+      await loadUsers();
+      await loadHistory();
+    }
+
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/users');
+        if (!res.ok) throw new Error('Failed to fetch accounts');
+        const users = await res.json();
+        usersCache = users;
+
+        // Render KPI
+        document.getElementById('kpiAccounts').textContent = users.length;
+        const totalCap = users.reduce((acc, u) => acc + (u.balance || 0), 0);
+        document.getElementById('kpiTotalCapital').textContent = '$' + totalCap.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        // Populate Dropdowns
+        const balanceSelect = document.getElementById('balanceUserSelect');
+        const txSender = document.getElementById('txSender');
+        const txRecipient = document.getElementById('txRecipient');
+
+        balanceSelect.innerHTML = '<option value="">-- Choose registered account --</option>';
+        txSender.innerHTML = '<option value="">-- Choose sender --</option>';
+        txRecipient.innerHTML = '<option value="">-- Choose recipient --</option>';
+
+        users.forEach(u => {
+          const opt = `<option value="${u.id}">${u.name} (ID: ${u.id} • $${u.balance.toFixed(2)})</option>`;
+          balanceSelect.innerHTML += opt;
+          txSender.innerHTML += opt;
+          txRecipient.innerHTML += opt;
+        });
+
+        // Render Accounts Table
+        const tbody = document.getElementById('accountsTableBody');
+        if (users.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-slate-500">No accounts found. Click "Initialize Demo Accounts" above!</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = users.map(u => `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="py-2.5 mono text-slate-400">#${u.id}</td>
+            <td class="py-2.5 font-semibold text-white capitalize">${u.name}</td>
+            <td class="py-2.5 mono text-right text-emerald-400 font-bold">$${u.balance.toFixed(2)}</td>
+            <td class="py-2.5 mono text-right text-slate-500">v${u.version ?? 0}</td>
+          </tr>
+        `).join('');
+
+      } catch (err) {
+        console.error('Error loading users:', err);
+      }
+    }
+
+    async function loadHistory() {
+      try {
+        const res = await fetch('/api/transactions/history');
+        if (!res.ok) throw new Error('Failed to fetch transactions');
+        const txs = await res.json();
+
+        document.getElementById('kpiTransactions').textContent = txs.length;
+
+        const tbody = document.getElementById('historyTableBody');
+        if (txs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-slate-500">No transactions recorded yet</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = txs.map(tx => `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="py-2.5 mono text-slate-400">#${tx.id}</td>
+            <td class="py-2.5 capitalize text-slate-300">${tx.sender ? tx.sender.name : 'Unknown'}</td>
+            <td class="py-2.5 capitalize text-slate-300">${tx.recipient ? tx.recipient.name : 'Unknown'}</td>
+            <td class="py-2.5 mono text-right text-white font-semibold">$${tx.amount.toFixed(2)}</td>
+            <td class="py-2.5 mono text-right text-indigo-400">+$${(tx.incentive || 0).toFixed(2)}</td>
+          </tr>
+        `).join('');
+
+      } catch (err) {
+        console.error('Error loading history:', err);
+      }
+    }
+
+    async function queryBalance(e) {
+      e.preventDefault();
+      const userId = document.getElementById('balanceUserId').value;
+      if (!userId) return;
+
+      try {
+        const res = await fetch(`/balance?userId=${userId}`);
+        const data = await res.json();
+        const user = usersCache.find(u => u.id == userId);
+        const name = user ? user.name : 'External';
+
+        document.getElementById('balanceDisplay').textContent = '$' + (data.amount || 0).toFixed(2);
+        document.getElementById('balanceUserTag').textContent = `${name} (#${userId})`;
+      } catch (err) {
+        alert('Failed to query balance: ' + err.message);
+      }
+    }
+
+    async function submitTransaction(e) {
+      e.preventDefault();
+      const senderId = document.getElementById('txSender').value;
+      const recipientId = document.getElementById('txRecipient').value;
+      const amount = parseFloat(document.getElementById('txAmount').value);
+
+      if (senderId === recipientId) {
+        showToast(false, 'Validation Error: Sender and Recipient cannot be the same account.');
+        return;
+      }
+
+      const btn = document.getElementById('submitTxBtn');
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+
+      try {
+        const res = await fetch('/api/transactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ senderId: parseInt(senderId), recipientId: parseInt(recipientId), amount })
+        });
+        const result = await res.json();
+
+        if (res.ok && result.success) {
+          showToast(true, `✓ ${result.message} New Sender Balance: $${result.senderNewBalance.toFixed(2)} • New Recipient Balance: $${result.recipientNewBalance.toFixed(2)}`);
+          document.getElementById('txAmount').value = '';
+          await loadUsers();
+          await loadHistory();
+        } else {
+          showToast(false, `✕ ${result.message || 'Transaction rejected.'}`);
+        }
+      } catch (err) {
+        showToast(false, 'Network / Server Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+      }
+    }
+
+    async function seedDatabase() {
+      try {
+        const res = await fetch('/api/users/seed', { method: 'POST' });
+        const data = await res.json();
+        alert(data.message);
+        await loadDashboard();
+      } catch (err) {
+        alert('Failed to seed accounts: ' + err.message);
+      }
+    }
+
+    function showToast(isSuccess, message) {
+      const toast = document.getElementById('txToast');
+      const msg = document.getElementById('txToastMsg');
+      toast.className = isSuccess 
+        ? 'mt-5 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-sm'
+        : 'mt-5 p-4 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 text-sm';
+      msg.textContent = message;
+      toast.classList.remove('hidden');
+    }
+
+    // Auto-load on page ready
+    window.addEventListener('DOMContentLoaded', loadDashboard);
+  </script>
+</body>
+</html>

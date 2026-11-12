@@ -6,6 +6,8 @@ import com.jpmc.midascore.repository.UserRepository;
 import com.jpmc.midascore.repository.TransactionRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 @Component
 public class DatabaseConduit {
     private final UserRepository userRepository;
@@ -28,4 +30,11 @@ public class DatabaseConduit {
         transactionRepository.save(transactionRecord);
     }
 
+    public List<UserRecord> findAllUsers() {
+        return userRepository.findAll();
+    }
+
+    public List<TransactionRecord> findAllTransactions() {
+        return transactionRepository.findAll();
+    }
 }

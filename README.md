@@ -5,6 +5,8 @@
 ![Apache Kafka](https://img.shields.io/badge/Apache_Kafka-231F20?style=for-the-badge&logo=apachekafka&logoColor=white)
 ![Spring Data JPA](https://img.shields.io/badge/Spring_Data_JPA-Hibernate-blue?style=for-the-badge&logo=hibernate&logoColor=white)
 ![H2 Database](https://img.shields.io/badge/Database-H2_In--Memory-007ACC?style=for-the-badge)
+![Docker](https://img.shields.io/badge/Docker-Compose_Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![CI Pipeline](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
 ![Maven](https://img.shields.io/badge/Build-Maven-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white)
 
 An enterprise-grade, event-driven financial transaction processing engine built with **Java 17**, **Spring Boot**, and **Apache Kafka**. The system ingests high-volume financial transaction streams asynchronously, executes strict solvency and account validation rules, orchestrates real-time reward calculations with an external incentive microservice, maintains double-entry ledger balances, and records immutable historical audit logs in a relational database.
@@ -100,6 +102,18 @@ flowchart TD
     Client -->|GET /balance?userId=id| BC
     BC -->|Query Balance| DC
 ```
+
+---
+
+## Live Interactive Financial Dashboard
+
+MidasCore includes an embedded, high-performance financial ledger dashboard served directly by the Spring Boot server at **`http://localhost:33400/`**.
+
+- **Real-Time Account Balance Querier**: Instant balance lookups via `GET /balance?userId={id}`.
+- **Transaction Settlement Simulator**: Web form allowing manual dispatch of financial transactions (`POST /api/transactions`) with instant solvency checks and incentive feedback.
+- **Live Account Ledger Directory**: Displays all registered account holders, balances, and optimistic locking version numbers (`GET /api/users`).
+- **Historical Audit Stream**: Real-time log of settled transactions with principal and reward amounts (`GET /api/transactions/history`).
+- **One-Click Demo Account Seeder**: Auto-initializes standard test accounts (`POST /api/users/seed`).
 
 ---
 
@@ -435,10 +449,26 @@ Launch the Spring Boot application:
 ./mvnw spring-boot:run
 ```
 
-The service initializes on port `33400`. You can access the embedded H2 Web Console at `http://localhost:33400/h2-console`:
-- **JDBC URL**: `jdbc:h2:mem:midasdb`
-- **Username**: `sa`
-- **Password**: *(leave blank)*
+The service initializes on port `33400`. You can access:
+- **Interactive Financial Dashboard**: `http://localhost:33400/`
+- **Embedded H2 Web Console**: `http://localhost:33400/h2-console`
+  - **JDBC URL**: `jdbc:h2:mem:midasdb`
+  - **Username**: `sa`
+  - **Password**: *(leave blank)*
+
+---
+
+### Alternative: Run with Docker Compose (Full Stack)
+
+Spin up Apache Kafka, the Incentive Microservice, and MidasCore with a single command:
+
+```bash
+docker compose up --build
+```
+
+- **MidasCore Financial Dashboard**: `http://localhost:33400/`
+- **Incentive Microservice**: `http://localhost:8080/incentive`
+- **Apache Kafka Broker**: `localhost:9092`
 
 ---
 
