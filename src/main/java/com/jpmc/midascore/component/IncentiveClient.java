@@ -34,3 +34,4 @@ public class IncentiveClient {
         return 0.0f;
     }
 }
+
